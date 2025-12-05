@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { Elysia } from "elysia";
+import z from "zod";
 
 const token = process.env.TOKEN;
 const port = process.env.PORT || 9856;
@@ -12,11 +13,11 @@ if (!token) {
 
 const tokenAuth = new Elysia({ name: "tokenAuth" }).macro({
   tokenAuth: () => ({
-    beforeHandle({ headers }) {
-      const authorization =
-        headers["authorization"] || headers["Authorization"];
+    beforeHandle(params) {
+      const authorization = params?.request?.headers?.get("authorization");
+      const headerToken = authorization?.split(" ")?.[1]?.trim();
 
-      if (authorization !== `Bearer ${token}`) {
+      if (headerToken !== token) {
         throw new Error("Unauthorized");
       }
     },
@@ -30,14 +31,19 @@ const app = new Elysia()
     () => {
       return {
         message: "OK",
-      };
+      } as const;
     },
     {
       tokenAuth: true,
+      response: {
+        200: z.object({
+          message: z.literal("OK"),
+        }),
+      },
     }
   )
   .listen(port);
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+export type App = typeof app;
+
+console.log("RUNNING");
