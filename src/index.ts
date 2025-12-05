@@ -3,6 +3,7 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 
 const token = process.env.TOKEN;
+const port = process.env.PORT || 9856;
 
 if (!token) {
   console.error("TOKEN is not set");
@@ -35,7 +36,7 @@ const app = new Elysia()
       tokenAuth: true,
     }
   )
-  .listen(9856);
+  .listen(port);
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
