@@ -3,9 +3,11 @@
   "version": "1.0.50",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build ./src/index --compile --outfile hlsfy-worker"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "elysia": "latest"
   },
   "devDependencies": {

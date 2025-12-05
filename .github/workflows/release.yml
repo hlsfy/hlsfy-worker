@@ -1,0 +1,126 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            artifact_name: hlsfy-worker-linux-x64
+
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            artifact_name: hlsfy-worker-linux-arm64
+
+          # macOS
+          - os: macos-latest
+            target: bun-darwin-x64
+            artifact_name: hlsfy-worker-darwin-x64
+
+          - os: macos-latest
+            target: bun-darwin-arm64
+            artifact_name: hlsfy-worker-darwin-arm64
+
+          # Windows
+          - os: windows-latest
+            target: bun-windows-x64
+            artifact_name: hlsfy-worker-windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binary
+        run: bun build ./src/index.ts --compile --target=${{ matrix.target }} --outfile ${{ matrix.artifact_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+
+          # Move and rename files from artifact directories
+          for dir in artifacts/*/; do
+            artifact_name=$(basename "$dir")
+            # Find the binary file in each artifact directory
+            find "$dir" -type f -exec mv {} "release/$artifact_name" \;
+          done
+
+          # Make Linux and macOS binaries executable
+          chmod +x release/hlsfy-worker-linux-* 2>/dev/null || true
+          chmod +x release/hlsfy-worker-darwin-* 2>/dev/null || true
+
+          # List release files
+          ls -la release/
+
+      - name: Create checksums
+        run: |
+          cd release
+          sha256sum * > checksums-sha256.txt
+          cat checksums-sha256.txt
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
