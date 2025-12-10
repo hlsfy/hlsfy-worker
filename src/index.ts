@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { Elysia } from "elysia";
 import z from "zod";
+import { transcodeApp } from "./transcode";
 
 const token = process.env.TOKEN;
 const port = process.env.PORT || 9856;
@@ -42,6 +43,7 @@ const app = new Elysia()
       },
     }
   )
+  .use(transcodeApp)
   .listen(port);
 
 export type App = typeof app;
