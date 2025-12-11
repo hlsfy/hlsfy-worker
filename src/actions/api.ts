@@ -21,7 +21,7 @@ export function getApiClient(apiKey?: string) {
     (error) => {
       const errorObject = error?.response?.data || error;
       throw errorObject;
-    }
+    },
   );
 
   return axiosInstance;
@@ -36,7 +36,7 @@ export async function createAction({
   externalTranscodeId: string | null;
   action: string;
   payload: any;
-  payloadFromActionId: number | null;
+  payloadFromActionId: string | null;
 }): Promise<string | null> {
   if (!process.env.HLSFY_API_KEY || !externalTranscodeId) return null;
 
@@ -48,7 +48,7 @@ export async function createAction({
       action,
       payload,
       payloadFromActionId,
-    }
+    },
   );
 
   return response.data.id;
@@ -68,12 +68,12 @@ export async function updateActionStatus({
 
   const apiClient = getApiClient(process.env.HLSFY_API_KEY);
 
-  const response = await apiClient.post(
+  const response = await apiClient.put(
     `/v1/transcodes/${externalTranscodeId}/actions`,
     {
       id: externalActionId,
       status,
-    }
+    },
   );
 
   return response.data.id;
@@ -98,7 +98,7 @@ export async function createActionOutput({
     {
       actionId: externalActionId,
       output,
-    }
+    },
   );
 
   return response.data.id;

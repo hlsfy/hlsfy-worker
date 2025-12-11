@@ -29,6 +29,20 @@
       "when": 1765395463868,
       "tag": "0003_material_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1765459102718,
+      "tag": "0004_lovely_toro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1765459179389,
+      "tag": "0005_fantastic_roulette",
+      "breakpoints": true
     }
   ]
 }

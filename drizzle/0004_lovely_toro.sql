@@ -1,0 +1,1 @@
+ALTER TABLE `transcode_actions` ADD `current_attempt` integer NOT NULL;

@@ -1,7 +1,9 @@
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, InferSelectModel, notInArray } from "drizzle-orm";
 import { db } from "../db";
 import * as schema from "../db/schema";
 import * as api from "./api";
+import { queue } from "../queue";
+import { ACTIONS } from ".";
 
 export const createAction = async ({
   transcodeId,
@@ -28,11 +30,57 @@ export const createAction = async ({
     throw new Error(`Transcode with ID ${transcodeId} not found`);
   }
 
+  const actionItem = ACTIONS.find((a) => a.name === action);
+
+  if (!actionItem) {
+    throw new Error("Action not found");
+  }
+
+  if (payload && Object.keys(payload).length && actionItem.payloadSchema) {
+    const payloadResult = actionItem.payloadSchema.safeParse(payload);
+
+    if (!payloadResult.success) {
+      throw new Error("Invalid payload");
+    }
+
+    payload = payloadResult.data;
+  }
+
+  let payloadFromExternalActionId: string | null = null;
+
+  if (payloadFromActionId) {
+    const [payloadAction] = await db
+      .select()
+      .from(schema.transcodeActions)
+      .where(eq(schema.transcodeActions.id, payloadFromActionId))
+      .limit(1);
+
+    if (!payloadAction) {
+      throw new Error("Payload action not found");
+    }
+
+    payloadFromExternalActionId = payloadAction.externalId;
+
+    if (actionItem.isInputFile) {
+      const payloadActionItem = ACTIONS.find(
+        (a) => a.name === payloadAction.action,
+      );
+
+      if (!payloadActionItem) {
+        throw new Error("Payload action not found");
+      }
+
+      if (!payloadActionItem.isOutputFile) {
+        throw new Error("Payload action is not output file");
+      }
+    }
+  }
+
   const externalActionId = await api.createAction({
     externalTranscodeId: transcode.externalId,
     action,
     payload,
-    payloadFromActionId,
+    payloadFromActionId: payloadFromExternalActionId,
   });
 
   const [createdAction] = await db
@@ -48,6 +96,8 @@ export const createAction = async ({
       delay,
     })
     .returning();
+
+  queue.push(createdAction.id);
 
   return createdAction.id;
 };
@@ -135,6 +185,40 @@ export const createActionOutput = async ({
   });
 };
 
+export async function waitAction<T>(actionId: number): Promise<T[]> {
+  let isNotCompleted = true;
+
+  let allOutputs: T[] = [];
+
+  while (isNotCompleted) {
+    const [action] = await db
+      .select()
+      .from(schema.transcodeActions)
+      .where(eq(schema.transcodeActions.id, actionId))
+      .limit(1);
+
+    if (!action) {
+      throw new Error(`Action with ID ${actionId} not found`);
+    }
+
+    const outputs = await db
+      .select()
+      .from(schema.transcodeActionOutputs)
+      .where(
+        and(eq(schema.transcodeActionOutputs.transcodeActionId, action.id)),
+      );
+
+    if (["COMPLETED", "FAILED"].includes(action.status)) {
+      allOutputs = outputs.map((output) => JSON.parse(output.output));
+      isNotCompleted = false;
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  return allOutputs;
+}
+
 export const onData = async (
   actionId: number,
   {
@@ -175,6 +259,74 @@ export const onData = async (
 
     if (["COMPLETED", "FAILED"].includes(action.status)) {
       isNotCompleted = false;
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
+};
+
+export async function getAction(actionId: number) {
+  const [action] = await db
+    .select()
+    .from(schema.transcodeActions)
+    .where(eq(schema.transcodeActions.id, actionId))
+    .limit(1);
+
+  if (!action) {
+    throw new Error(`Action with ID ${actionId} not found`);
+  }
+
+  return {
+    ...action,
+    payload: action.payload ? JSON.parse(action.payload) : null,
+  };
+}
+
+export const getSession = async (transcodeId: number) => {
+  let [activedSession] = await db
+    .select({
+      homeFolder: schema.transcodeSessions.homeFolder,
+      sourceFilePath: schema.transcodeSessions.sourceFilePath,
+    })
+    .from(schema.transcodeSessions)
+    .where(
+      and(
+        eq(schema.transcodeSessions.transcodeId, transcodeId),
+        eq(schema.transcodeSessions.status, "ACTIVE"),
+      ),
+    );
+
+  if (!activedSession) {
+    const actionId = await createAction({
+      action: "DOWNLOAD_SOURCE_FILE",
+      delay: 1000,
+      maxAttempts: 3,
+      transcodeId,
+      payload: {},
+      payloadFromActionId: null,
+    });
+
+    const [output] = await waitAction<{ homeFolder: string; path: string }>(
+      actionId,
+    );
+
+    if (!output) return null;
+
+    let [createdSession] = await db
+      .insert(schema.transcodeSessions)
+      .values({
+        transcodeId,
+        status: "ACTIVE",
+        sourceFilePath: output.path,
+        homeFolder: output.homeFolder,
+      })
+      .returning({
+        homeFolder: schema.transcodeSessions.homeFolder,
+        sourceFilePath: schema.transcodeSessions.sourceFilePath,
+      });
+
+    activedSession = createdSession;
+  }
+
+  return activedSession;
 };

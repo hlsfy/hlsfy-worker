@@ -25,7 +25,9 @@ export const transcodes = sqliteTable("transcodes", {
 
 export const transcodeSessions = sqliteTable("transcode_sessions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  transcodeId: integer("transcode_id").references(() => transcodes.id),
+  transcodeId: integer("transcode_id")
+    .notNull()
+    .references(() => transcodes.id),
   status: text("status").$type<"ACTIVE" | "EXPIRED">().notNull(),
   homeFolder: text("home_folder").notNull(),
   sourceFilePath: text("source_file_path").notNull(),
@@ -39,11 +41,14 @@ export const transcodeSessions = sqliteTable("transcode_sessions", {
 
 export const transcodeActions = sqliteTable("transcode_actions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  transcodeId: integer("transcode_id").references(() => transcodes.id),
+  transcodeId: integer("transcode_id")
+    .notNull()
+    .references(() => transcodes.id),
   action: text("action").notNull(),
   payload: text("payload"), // stringified JSON with the payload
   maxAttempts: integer("max_attempts").notNull(),
   delay: integer("delay").notNull(),
+  currentAttempt: integer("current_attempt").notNull().default(0),
   payloadFromActionId: integer("payload_from_action_id").references(
     (): AnySQLiteColumn => transcodeActions.id,
   ),
@@ -62,9 +67,9 @@ export const transcodeActions = sqliteTable("transcode_actions", {
 export const transcodeActionOutputs = sqliteTable("transcode_action_outputs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   externalId: text("external_id"),
-  transcodeActionId: integer("transcode_action_id").references(
-    () => transcodeActions.id,
-  ),
+  transcodeActionId: integer("transcode_action_id")
+    .notNull()
+    .references(() => transcodeActions.id),
   output: text("output").notNull(),
   createdAt: integer("created_at")
     .notNull()

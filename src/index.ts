@@ -3,6 +3,7 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 import z from "zod";
 import { transcodeApp } from "./transcode";
+import { runMigrations } from "./db";
 
 const token = process.env.TOKEN;
 const port = process.env.PORT || 9856;
@@ -25,6 +26,8 @@ const tokenAuth = new Elysia({ name: "tokenAuth" }).macro({
   }),
 });
 
+runMigrations();
+
 const app = new Elysia()
   .use(tokenAuth)
   .get(
@@ -41,7 +44,7 @@ const app = new Elysia()
           message: z.literal("OK"),
         }),
       },
-    }
+    },
   )
   .use(transcodeApp)
   .listen(port);

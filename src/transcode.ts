@@ -133,6 +133,7 @@ transcodeApp.get(
     const [action] = await db
       .select({
         id: schema.transcodeActions.id,
+        action: schema.transcodeActions.action,
         status: schema.transcodeActions.status,
         payload: schema.transcodeActions.payload,
         payloadFromActionId: schema.transcodeActions.payloadFromActionId,
@@ -168,6 +169,7 @@ transcodeApp.get(
 
     return {
       id: action.id,
+      action: action.action,
       status: action.status,
       payload: action.payload ? JSON.parse(action.payload) : null,
       outputs: parsedOutputs,
@@ -185,6 +187,7 @@ transcodeApp.get(
     }),
     response: z.object({
       id: z.number(),
+      action: z.string(),
       status: z.string(),
       payload: z.any(),
       outputs: z.array(z.any()),
