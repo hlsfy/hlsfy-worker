@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import fs from "node:fs";
 import { Database } from "bun:sqlite";
 import path from "node:path";
@@ -16,10 +15,4 @@ sqlite.exec("PRAGMA busy_timeout = 5000;");
 
 const db = drizzle({ client: sqlite });
 
-function runMigrations() {
-  migrate(db, {
-    migrationsFolder: path.join(__dirname, "..", "..", "drizzle"),
-  });
-}
-
-export { db, sqlite, runMigrations };
+export { db, sqlite };

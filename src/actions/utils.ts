@@ -1,4 +1,4 @@
-import { and, eq, InferSelectModel, notInArray } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { db } from "../db";
 import * as schema from "../db/schema";
 import * as api from "./api";
@@ -63,7 +63,7 @@ export const createAction = async ({
 
     if (actionItem.isInputFile) {
       const payloadActionItem = ACTIONS.find(
-        (a) => a.name === payloadAction.action,
+        (a) => a.name === payloadAction.action
       );
 
       if (!payloadActionItem) {
@@ -205,7 +205,7 @@ export async function waitAction<T>(actionId: number): Promise<T[]> {
       .select()
       .from(schema.transcodeActionOutputs)
       .where(
-        and(eq(schema.transcodeActionOutputs.transcodeActionId, action.id)),
+        and(eq(schema.transcodeActionOutputs.transcodeActionId, action.id))
       );
 
     if (["COMPLETED", "FAILED"].includes(action.status)) {
@@ -221,18 +221,16 @@ export async function waitAction<T>(actionId: number): Promise<T[]> {
 
 export const onData = async (
   actionId: number,
-  {
-    callback,
-  }: {
-    callback: (data: any) => Promise<void>;
-  },
+  callback: (data: any) => Promise<void>
 ) => {
-  let isNotCompleted = true;
   let lastOutputs: number[] = [];
 
-  while (isNotCompleted) {
+  while (true) {
     const [action] = await db
-      .select()
+      .select({
+        id: schema.transcodeActions.id,
+        status: schema.transcodeActions.status,
+      })
       .from(schema.transcodeActions)
       .where(eq(schema.transcodeActions.id, actionId))
       .limit(1);
@@ -247,8 +245,8 @@ export const onData = async (
       .where(
         and(
           eq(schema.transcodeActionOutputs.transcodeActionId, action.id),
-          notInArray(schema.transcodeActionOutputs.id, lastOutputs),
-        ),
+          notInArray(schema.transcodeActionOutputs.id, lastOutputs)
+        )
       );
 
     for (const output of outputs) {
@@ -258,7 +256,7 @@ export const onData = async (
     lastOutputs = [...lastOutputs, ...outputs.map((output) => output.id)];
 
     if (["COMPLETED", "FAILED"].includes(action.status)) {
-      isNotCompleted = false;
+      break;
     } else {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
@@ -292,8 +290,8 @@ export const getSession = async (transcodeId: number) => {
     .where(
       and(
         eq(schema.transcodeSessions.transcodeId, transcodeId),
-        eq(schema.transcodeSessions.status, "ACTIVE"),
-      ),
+        eq(schema.transcodeSessions.status, "ACTIVE")
+      )
     );
 
   if (!activedSession) {
@@ -307,7 +305,7 @@ export const getSession = async (transcodeId: number) => {
     });
 
     const [output] = await waitAction<{ homeFolder: string; path: string }>(
-      actionId,
+      actionId
     );
 
     if (!output) return null;

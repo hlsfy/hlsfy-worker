@@ -7,9 +7,11 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import * as fileType from "file-type";
+import { getStorageClient } from "../../storage-clients/utils";
 
 export const downloadSourceFile = async (actionId: number) => {
   const action = await getAction(actionId);
+
   const [transcode] = await db
     .select()
     .from(schema.transcodes)
@@ -23,6 +25,7 @@ export const downloadSourceFile = async (actionId: number) => {
   const rawSourceFilePath = path.join(homeFolder, "source");
 
   if (transcode.inputFileSource === "URL") {
+    console.log(`Downloading file from URL: ${transcode.inputFileUrl}`);
     if (!transcode.inputFileUrl) {
       throw new Error("Input file URL not found");
     }
@@ -39,9 +42,24 @@ export const downloadSourceFile = async (actionId: number) => {
       file.on("error", reject);
     });
   } else if (transcode.inputFileSource === "STORAGE") {
-    // TODO: download file from storage
+    if (!transcode.inputStorage || !transcode.inputFileKey) {
+      throw new Error("Input storage or input file key not found");
+    }
+
+    console.log(`Downloading file from storage: ${transcode.inputFileKey}`);
+
+    const storageClient = getStorageClient(transcode.inputStorage);
+
+    await storageClient.downloadFile({
+      key: transcode.inputFileKey,
+      outputPath: rawSourceFilePath,
+    });
   } else {
     throw new Error("Unsupported input file source");
+  }
+
+  if (!fs.existsSync(rawSourceFilePath)) {
+    throw new Error("Source file not found");
   }
 
   const sourceType = await getFileType(rawSourceFilePath);

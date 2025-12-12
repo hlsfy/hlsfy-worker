@@ -3,7 +3,9 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 import z from "zod";
 import { transcodeApp } from "./transcode";
-import { runMigrations } from "./db";
+import { db } from "./db";
+import path from "path";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 
 const token = process.env.TOKEN;
 const port = process.env.PORT || 9856;
@@ -26,6 +28,14 @@ const tokenAuth = new Elysia({ name: "tokenAuth" }).macro({
   }),
 });
 
+function runMigrations() {
+  const drizzleFolder = path.join(__dirname, "..", "drizzle");
+
+  migrate(db, {
+    migrationsFolder: drizzleFolder,
+  });
+}
+
 runMigrations();
 
 const app = new Elysia()
@@ -44,7 +54,7 @@ const app = new Elysia()
           message: z.literal("OK"),
         }),
       },
-    },
+    }
   )
   .use(transcodeApp)
   .listen(port);
