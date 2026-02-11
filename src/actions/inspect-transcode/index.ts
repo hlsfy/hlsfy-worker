@@ -26,7 +26,7 @@ export const inspectTranscode = async (actionId: number): ActionResult => {
     promises.push(
       onData(action.payloadFromActionId, async (data) => {
         await execute(action, data.path);
-      })
+      }),
     );
   }
 
@@ -35,7 +35,7 @@ export const inspectTranscode = async (actionId: number): ActionResult => {
 
 async function execute(
   action: Awaited<ReturnType<typeof getAction>>,
-  filePath: string
+  filePath: string,
 ) {
   console.log(`Executing action ${action.action} with file ${filePath}`);
 
