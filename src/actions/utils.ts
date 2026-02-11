@@ -63,7 +63,7 @@ export const createAction = async ({
 
     if (actionItem.isInputFile) {
       const payloadActionItem = ACTIONS.find(
-        (a) => a.name === payloadAction.action
+        (a) => a.name === payloadAction.action,
       );
 
       if (!payloadActionItem) {
@@ -205,7 +205,7 @@ export async function waitAction<T>(actionId: number): Promise<T[]> {
       .select()
       .from(schema.transcodeActionOutputs)
       .where(
-        and(eq(schema.transcodeActionOutputs.transcodeActionId, action.id))
+        and(eq(schema.transcodeActionOutputs.transcodeActionId, action.id)),
       );
 
     if (["COMPLETED", "FAILED"].includes(action.status)) {
@@ -221,7 +221,7 @@ export async function waitAction<T>(actionId: number): Promise<T[]> {
 
 export const onData = async (
   actionId: number,
-  callback: (data: any) => Promise<void>
+  callback: (data: any) => Promise<void>,
 ) => {
   let lastOutputs: number[] = [];
 
@@ -245,8 +245,8 @@ export const onData = async (
       .where(
         and(
           eq(schema.transcodeActionOutputs.transcodeActionId, action.id),
-          notInArray(schema.transcodeActionOutputs.id, lastOutputs)
-        )
+          notInArray(schema.transcodeActionOutputs.id, lastOutputs),
+        ),
       );
 
     for (const output of outputs) {
@@ -290,8 +290,8 @@ export const getSession = async (transcodeId: number) => {
     .where(
       and(
         eq(schema.transcodeSessions.transcodeId, transcodeId),
-        eq(schema.transcodeSessions.status, "ACTIVE")
-      )
+        eq(schema.transcodeSessions.status, "ACTIVE"),
+      ),
     );
 
   if (!activedSession) {
@@ -304,26 +304,22 @@ export const getSession = async (transcodeId: number) => {
       payloadFromActionId: null,
     });
 
-    const [output] = await waitAction<{ homeFolder: string; path: string }>(
-      actionId
-    );
+    const [output] = await waitAction<{
+      homeFolder: string;
+      path: string;
+      sessionId: number;
+    }>(actionId);
 
     if (!output) return null;
 
-    let [createdSession] = await db
-      .insert(schema.transcodeSessions)
-      .values({
-        transcodeId,
-        status: "ACTIVE",
-        sourceFilePath: output.path,
-        homeFolder: output.homeFolder,
-      })
-      .returning({
+    [activedSession] = await db
+      .select({
         homeFolder: schema.transcodeSessions.homeFolder,
         sourceFilePath: schema.transcodeSessions.sourceFilePath,
-      });
-
-    activedSession = createdSession;
+      })
+      .from(schema.transcodeSessions)
+      .where(eq(schema.transcodeSessions.id, output.sessionId))
+      .limit(1);
   }
 
   return activedSession;

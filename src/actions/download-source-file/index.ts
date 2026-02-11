@@ -67,12 +67,25 @@ export const downloadSourceFile = async (actionId: number) => {
 
   fs.renameSync(rawSourceFilePath, sourceFilePath);
 
+  let [createdSession] = await db
+    .insert(schema.transcodeSessions)
+    .values({
+      transcodeId: action.transcodeId,
+      status: "ACTIVE",
+      sourceFilePath,
+      homeFolder,
+    })
+    .returning({
+      id: schema.transcodeSessions.id,
+    });
+
   await createActionOutput({
     actionId,
     transcodeId: action.transcodeId,
     output: {
       path: sourceFilePath,
       homeFolder,
+      sessionId: createdSession.id,
     },
   });
 };

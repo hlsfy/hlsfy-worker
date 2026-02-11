@@ -1,5 +1,6 @@
 import z from "zod";
 import { downloadSourceFile } from "./download-source-file";
+import { expireTranscodeSessions } from "./expire-transcode-sessions";
 import { inspectTranscode } from "./inspect-transcode";
 
 export type ActionResult = Promise<{
@@ -30,5 +31,11 @@ export const ACTIONS: {
         path: z.string(),
       })
       .optional(),
+  },
+  {
+    name: "EXPIRE_TRANSCODE_SESSIONS",
+    isInputFile: false,
+    isOutputFile: false,
+    handler: expireTranscodeSessions,
   },
 ];
