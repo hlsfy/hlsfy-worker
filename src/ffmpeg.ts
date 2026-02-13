@@ -32,7 +32,7 @@ async function getLatestRelease(): Promise<any> {
 
   if (!res.ok) {
     throw new Error(
-      `Failed to fetch ${REPO} latest release metadata (HTTP ${res.status})`
+      `Failed to fetch ${REPO} latest release metadata (HTTP ${res.status})`,
     );
   }
 
@@ -133,7 +133,7 @@ async function installTool(tool: Tool): Promise<string> {
     const picked =
       assets.find((a) => a.name === prefix || a.name === `${prefix}${exe}`) ??
       assets.find(
-        (a) => a.name === `${prefix}.gz` || a.name === `${prefix}${exe}.gz`
+        (a) => a.name === `${prefix}.gz` || a.name === `${prefix}${exe}.gz`,
       );
 
     if (!picked) {
@@ -144,7 +144,7 @@ async function installTool(tool: Tool): Promise<string> {
         .join(", ");
       throw new Error(
         `No ${tool} binary found for ${platform}-${arch} in ${REPO} latest release. ` +
-          `Available (sample): ${sample}`
+          `Available (sample): ${sample}`,
       );
     }
 
@@ -158,7 +158,7 @@ async function installTool(tool: Tool): Promise<string> {
       });
       if (!res.ok)
         throw new Error(
-          `Download failed (HTTP ${res.status}) for ${picked.browser_download_url}`
+          `Download failed (HTTP ${res.status}) for ${picked.browser_download_url}`,
         );
 
       const gz = Buffer.from(await res.arrayBuffer());
@@ -183,7 +183,7 @@ async function installTool(tool: Tool): Promise<string> {
   return dest;
 }
 
-async function resolveTools(): Promise<{
+export async function resolveFfmpegTools(): Promise<{
   ffmpegPath: string;
   ffprobePath: string;
 }> {
@@ -201,7 +201,7 @@ let initPromise: Promise<typeof ffmpeg> | null = null;
 export const getFFmpeg = () => {
   if (!initPromise) {
     initPromise = (async () => {
-      const { ffmpegPath, ffprobePath } = await resolveTools();
+      const { ffmpegPath, ffprobePath } = await resolveFfmpegTools();
 
       ffmpeg.setFfmpegPath(ffmpegPath);
       ffmpeg.setFfprobePath(ffprobePath);

@@ -1,5 +1,6 @@
 import z from "zod";
 import { downloadSourceFile } from "./download-source-file";
+import { executeCustomFfmpeg } from "./execute-custom-ffmpeg";
 import { expireTranscodeSessions } from "./expire-transcode-sessions";
 import { inspectTranscode } from "./inspect-transcode";
 
@@ -31,6 +32,17 @@ export const ACTIONS: {
         path: z.string(),
       })
       .optional(),
+  },
+  {
+    name: "EXECUTE_CUSTOM_FFMPEG",
+    isInputFile: true,
+    isOutputFile: true,
+    handler: executeCustomFfmpeg,
+    payloadSchema: z.object({
+      command: z.string().trim().min(1),
+      inputs: z.array(z.string().trim().min(1)).optional(),
+      outputFilenames: z.array(z.string().trim().min(1)).min(1),
+    }),
   },
   {
     name: "EXPIRE_TRANSCODE_SESSIONS",
